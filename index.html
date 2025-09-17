@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dark Hunger Optimizer</title>
+<style>
+  :root{
+    --bg:#0b0f14;           /* deep slate */
+    --card:#111823;         /* panel */
+    --muted:#8aa1b2;        /* secondary text */
+    --text:#e6eef5;         /* primary text */
+    --accent:#53b3ff;       /* cyan */
+    --accent-2:#8b5cf6;     /* purple */
+    --ok:#22c55e;           /* green */
+    --warn:#f59e0b;         /* amber */
+    --bad:#ef4444;          /* red */
+    --border: #1e2a36;
+  }
+  html,body{height:100%;}
+  body{
+    margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    background: radial-gradient(1200px 700px at 20% -10%, #14202b 0%, var(--bg) 55%), var(--bg);
+    color:var(--text);
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding:28px;}
+  header{display:flex; gap:14px; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  h1{font-weight:800; font-size:clamp(22px, 3vw, 34px); letter-spacing:.3px; margin:0;}
+  .badge{background:linear-gradient(135deg,var(--accent),var(--accent-2)); padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700;}
+  .grid{display:grid; grid-template-columns:1.1fr .9fr; gap:18px;}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,.02), transparent 22%), var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 10px 24px rgba(0,0,0,.35);}
+  .card h2{margin:0 0 10px 0; font-size:18px;}
+  .card .body{padding:18px;}
+  label{display:block; font-size:13px; color:var(--muted); margin:8px 0 6px;}
+  input[type="number"]{width:100%; box-sizing:border-box; background:#0f1621; color:var(--text); border:1px solid var(--border); border-radius:10px; padding:11px 12px; font-size:15px; outline:none;}
+  input[type="number"]:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(83,179,255,.2)}
+  .row{display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;}
+  .hint{font-size:12px; color:var(--muted);}
+  button{appearance:none; background:linear-gradient(135deg,var(--accent) 0,var(--accent-2) 100%); color:white; border:none; border-radius:12px; padding:12px 16px; font-weight:800; letter-spacing:.3px; cursor:pointer; margin-top:14px;}
+  button:disabled{opacity:.6; cursor:not-allowed;}
+  table{width:100%; border-collapse:collapse;}
+  th,td{padding:10px 12px; border-bottom:1px dashed var(--border); text-align:left;}
+  th{color:#b7c7d4; font-weight:700; font-size:13px;}
+  td{font-size:14px;}
+  .mono{font-variant-numeric:tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+  .pill{display:inline-block; padding:.25rem .5rem; border-radius:999px; font-size:12px; border:1px solid var(--border); color:#cbd5e1;}
+  .success{color:var(--ok);}
+  .footer-note{color:var(--muted); font-size:12px; margin-top:10px}
+  .range-box{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .tag{font-size:11px; padding:.3rem .5rem; background:#0f1722; border:1px solid var(--border); border-radius:999px; color:#c5d2dd}
+  .tables-2col{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px}
+  .col .tag{display:inline-block; margin-bottom:6px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Dark Hunger Optimizer <span class="pill">BDO • Failstack Planner</span></h1>
+      <div class="badge">Dark Mode</div>
+    </header>
+
+    <div class="grid">
+      <!-- Left: Inputs -->
+      <section class="card">
+        <div class="body">
+          <h2>Inputs</h2>
+          <div class="row">
+            <div>
+              <label for="startFS">Current Failstack</label>
+              <input id="startFS" type="number" min="0" step="1" value="100"/>
+              <div class="hint">Items work at <b class="mono">100+</b>. Values below 100 are treated as 100 for calculations.</div>
+            </div>
+            <div>
+              <label for="targetFS">Target Failstack</label>
+              <input id="targetFS" type="number" min="100" step="1" value="220"/>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="costDim">Cost per <b>Dim Hunger</b> (millions)</label>
+              <input id="costDim" type="number" min="0" step="0.1" value="40" />
+            </div>
+            <div>
+              <label for="costDark">Cost per <b>Dark Hunger</b> (millions)</label>
+              <input id="costDark" type="number" min="0" step="0.1" value="1080" />
+            </div>
+          </div>
+          <button id="solve">Calculate Best Combo</button>
+          <div class="footer-note">Costs are in millions of silver. Optimization uses dynamic programming for the lowest cost to reach or exceed your target.</div>
+        </div>
+      </section>
+
+      <!-- Right: Results -->
+      <section class="card">
+        <div class="body">
+          <h2>Result</h2>
+          <div id="summary" class="hint">Enter values and hit <b>Calculate</b>.</div>
+          <div id="result"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Tables describing step gains -->
+    <section class="card" style="margin-top:18px">
+      <div class="body">
+        <h2>Devour Gains by Current Failstack</h2>
+        <div class="tables-2col">
+          <div class="col">
+            <span class="tag">Dim (Faint Origin of Dark Hunger)</span>
+            <table id="tableDim"><thead><tr><th>FS Range</th><th>+FS</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="col">
+            <span class="tag">Dark (Origin of Dark Hunger)</span>
+            <table id="tableDark"><thead><tr><th>FS Range</th><th>+FS</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+<script>
+  // === Data from the screenshots ===
+  // Dim (Faint Origin of Dark Hunger)
+  const DIM = [
+    {min:100,max:104,inc:13},
+    {min:105,max:109,inc:12},
+    {min:110,max:117,inc:11},
+    {min:118,max:124,inc:10},
+    {min:125,max:134,inc:9},
+    {min:135,max:146,inc:8},
+    {min:147,max:163,inc:7},
+    {min:164,max:179,inc:6},
+    {min:180,max:205,inc:5},
+    {min:206,max:228,inc:4},
+    {min:229,max:267,inc:3},
+    {min:268,max:298,inc:2},
+    {min:299,max:299,inc:1},
+  ];
+
+  // Dark (Origin of Dark Hunger)
+  const DARK = [
+    {min:100,max:101,inc:26},
+    {min:102,max:105,inc:25},
+    {min:106,max:108,inc:24},
+    {min:109,max:111,inc:23},
+    {min:112,max:115,inc:22},
+    {min:116,max:119,inc:21},
+    {min:120,max:124,inc:20},
+    {min:125,max:129,inc:19},
+    {min:130,max:135,inc:18},
+    {min:136,max:141,inc:17},
+    {min:142,max:148,inc:16},
+    {min:149,max:156,inc:15},
+    {min:157,max:165,inc:14},
+    {min:166,max:175,inc:13},
+    {min:176,max:187,inc:12},
+    {min:188,max:196,inc:11},
+    {min:197,max:206,inc:10},
+    {min:207,max:217,inc:9},
+    {min:218,max:235,inc:8},
+    {min:236,max:254,inc:7},
+    {min:255,max:269,inc:6},
+    {min:270,max:291,inc:5},
+    {min:292,max:296,inc:4},
+    {min:297,max:297,inc:3},
+    {min:298,max:298,inc:2},
+    {min:299,max:299,inc:1},
+  ];
+
+  function incFor(fs, table){
+    fs = Math.max(100, Math.min(299, fs));
+    for(const r of table){ if(fs >= r.min && fs <= r.max) return r.inc; }
+    return 0;
+  }
+
+  function buildTables(){
+    const td = document.querySelector('#tableDim tbody');
+    const tk = document.querySelector('#tableDark tbody');
+    DIM.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td class="mono">${r.min}–${r.max}</td><td class="mono">+${r.inc}</td>`; td.appendChild(tr); });
+    DARK.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td class="mono">${r.min}–${r.max}</td><td class="mono">+${r.inc}</td>`; tk.appendChild(tr); });
+  }
+
+  // Dynamic programming over failstacks. We compute the cheapest cost (and plan) to reach every FS.
+  function optimize(startFS, targetFS, costDim, costDark){
+    const MAX = 299; // items defined up to 299
+    const start = Math.max(100, Math.min(MAX, Math.floor(startFS)));
+    const target = Math.max(start, Math.min(MAX, Math.floor(targetFS)));
+
+    // dp[s] = {cost, prev, used:"dim"|"dark"}
+    const INF = 1e18;
+    const dp = Array(MAX+1).fill(null).map(()=>({cost:INF, prev:null, used:null}));
+    dp[start].cost = 0;
+
+    // Relax states up to target using BFS-like DP (DAG because FS always increases)
+    for(let s=start; s<=target; s++){
+      if(dp[s].cost===INF) continue;
+      const incDim = incFor(s, DIM);
+      const incDark = incFor(s, DARK);
+      const nextD = Math.min(MAX, s + incDim);
+      const nextK = Math.min(MAX, s + incDark);
+      if(incDim>0 && dp[nextD].cost > dp[s].cost + costDim){
+        dp[nextD] = {cost: dp[s].cost + costDim, prev: s, used: 'dim'};
+      }
+      if(incDark>0 && dp[nextK].cost > dp[s].cost + costDark){
+        dp[nextK] = {cost: dp[s].cost + costDark, prev: s, used: 'dark'};
+      }
+      // Also propagate current best forward (in case next index not exactly visited) – ensures we can step again from already improved states.
+      // This loop structure already does; but we also consider states between s and target that might be unfilled; we'll fill as we go.
+    }
+
+    // Find smallest cost among states >= target (could overshoot due to increments). We'll search from target..MAX
+    let bestFs = target;
+    for(let fs=target; fs<=MAX; fs++){
+      if(dp[fs].cost < dp[bestFs].cost) bestFs = fs;
+    }
+    if(dp[bestFs].cost===INF) return null;
+
+    // Reconstruct path
+    let path=[]; let cur=bestFs; let numDim=0, numDark=0;
+    while(cur!==start){
+      const step = dp[cur];
+      const prev = step.prev;
+      const used = step.used;
+      path.push({from: prev, to: cur, used});
+      if(used==='dim') numDim++; else numDark++;
+      cur = prev;
+    }
+    path.reverse();
+
+    return {bestFs, totalCost: dp[bestFs].cost, path, numDim, numDark};
+  }
+
+  function formatMillions(x){
+    return new Intl.NumberFormat(undefined,{minimumFractionDigits:0, maximumFractionDigits:2}).format(x) + 'm';
+  }
+
+  function render(res){
+    const out = document.getElementById('result');
+    const summary = document.getElementById('summary');
+    if(!res){ summary.textContent = 'No solution found.'; out.innerHTML=''; return; }
+    const {bestFs,totalCost,path,numDim,numDark} = res;
+
+    summary.innerHTML = `<b class="success">Cheapest plan found.</b> Reaches <b class="mono">${bestFs}</b> with <b class="mono">${numDim}</b> × Dim and <b class="mono">${numDark}</b> × Dark for a total cost of <b class="mono">${formatMillions(totalCost)}</b>.`;
+
+    // Build steps table
+    let rows = path.map((p,i)=>{
+      const gain = p.to - p.from;
+      const label = p.used==='dim' ? 'Dim' : 'Dark';
+      return `<tr><td class="mono">${i+1}</td><td>${label}</td><td class="mono">${p.from} → ${p.to}</td><td class="mono">+${gain}</td></tr>`;
+    }).join('');
+    if(!rows) rows = '<tr><td colspan="4" class="hint">Already at or above target.</td></tr>';
+
+    out.innerHTML = `
+      <table>
+        <thead><tr><th>#</th><th>Item</th><th>FS</th><th>Gain</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  document.getElementById('solve').addEventListener('click', ()=>{
+    const startFS = Number(document.getElementById('startFS').value || 0);
+    const targetFS = Number(document.getElementById('targetFS').value || 0);
+    const costDim = Number(document.getElementById('costDim').value || 0);
+    const costDark = Number(document.getElementById('costDark').value || 0);
+
+    if(targetFS <= startFS){
+      render({bestFs:startFS,totalCost:0,path:[],numDim:0,numDark:0});
+      return;
+    }
+
+    const res = optimize(startFS, targetFS, costDim, costDark);
+    render(res);
+  });
+
+  buildTables();
+</script>
+</body>
+</html>
