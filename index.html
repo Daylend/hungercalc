@@ -72,13 +72,13 @@
             </div>
             <div>
               <label for="targetFS">Target Failstack</label>
-              <input id="targetFS" type="number" min="100" step="1" value="220"/>
+              <input id="targetFS" type="number" min="100" max="300" step="1" value="300"/>
             </div>
           </div>
           <div class="row">
             <div>
               <label for="costDim">Cost per <b>Dim Hunger</b> (millions)</label>
-              <input id="costDim" type="number" min="0" step="0.1" value="40" />
+              <input id="costDim" type="number" min="0" step="0.1" value="500" />
             </div>
             <div>
               <label for="costDark">Cost per <b>Dark Hunger</b> (millions)</label>
@@ -182,7 +182,7 @@
 
   // Dynamic programming over failstacks. We compute the cheapest cost (and plan) to reach every FS.
   function optimize(startFS, targetFS, costDim, costDark){
-    const MAX = 299; // items defined up to 299
+    const MAX = 300; // items defined up to 300
     const start = Math.max(100, Math.min(MAX, Math.floor(startFS)));
     const target = Math.max(start, Math.min(MAX, Math.floor(targetFS)));
 
@@ -258,7 +258,35 @@
     `;
   }
 
+  // --- Cookie helpers (persist last-used settings) ---
+  function setCookie(name, value, days){
+    const d = new Date();
+    d.setTime(d.getTime() + (days*24*60*60*1000));
+    document.cookie = name + "=" + encodeURIComponent(value) + "; expires=" + d.toUTCString() + "; path=/; SameSite=Lax";
+  }
+  function getCookie(name){
+    const k = name + "=";
+    const arr = document.cookie.split(';');
+    for(let c of arr){ c = c.trim(); if(c.indexOf(k)===0) return decodeURIComponent(c.substring(k.length)); }
+    return null;
+  }
+  function loadInputs(){
+    const map = {startFS:'dh_start', targetFS:'dh_target', costDim:'dh_costDim', costDark:'dh_costDark'};
+    for(const id in map){ const v=getCookie(map[id]); if(v!==null && v!=='' && !Number.isNaN(Number(v))) document.getElementById(id).value = Number(v); }
+  }
+  function saveInputs(){
+    setCookie('dh_start', document.getElementById('startFS').value, 180);
+    setCookie('dh_target', document.getElementById('targetFS').value, 180);
+    setCookie('dh_costDim', document.getElementById('costDim').value, 180);
+    setCookie('dh_costDark', document.getElementById('costDark').value, 180);
+  }
+  ['startFS','targetFS','costDim','costDark'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', saveInputs);
+  });
+  loadInputs();
+
   document.getElementById('solve').addEventListener('click', ()=>{
+    saveInputs();
     const startFS = Number(document.getElementById('startFS').value || 0);
     const targetFS = Number(document.getElementById('targetFS').value || 0);
     const costDim = Number(document.getElementById('costDim').value || 0);
